@@ -1,0 +1,144 @@
+﻿@page "/Zivali"
+@using BlazorApp3.NewFolder
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+
+
+<h1>Živali:</h1>
+
+@if (seznamZivali == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id:</th>
+                <th>Name:</th>
+                <th>Class:</th>
+                <th>Age:</th>
+
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var zival in seznamZivali) //Foreach (tako bomo zgradili tabelo)!
+            {
+                <tr>
+
+                    <td>@zival.id</td>
+                    <td>@zival.name</td>
+                    <td>@zival.razred</td>
+                    <td>@zival.starost</td>
+
+                </tr>
+            }
+            <tr>
+                <td><input @bind="@novaZival.id" /></td>
+                <td>
+                    <input @bind="@novaZival.name" @oninput="(e)=> { novaZival.name = e.Value ==null? string.Empty:(string)e.Value; }" />
+                </td>
+                <td>
+                    <input @bind="@novaZival.razred" @oninput="(e)=> { novaZival.razred = e.Value ==null? string.Empty:(string)e.Value; }" />
+                </td>
+                <td>
+                    <input @bind="@novaZival.starost" />
+                </td>
+                <td><button @onclick="()=>save(novaZival)">Save</button></td>
+
+
+
+
+            </tr>
+            <tr>
+                <td>
+                    <input @bind="@idZivali" />
+                </td>
+
+
+                <td><button @onclick="()=>delete(idZivali)">Delete</button></td>
+            </tr>
+
+            <tr>
+                <td>
+                    <input @bind="@animalId" placeholder="ID you want to change"/>
+
+                </td>
+                <td>
+                    <input @bind="@newAnimalClass" placeholder="Name you want to change" />
+                </td>
+                <td> <button @onclick="()=>change(animalId,newAnimalClass)">Change</button></td>
+            </tr>
+
+        </tbody>
+    </table>
+}
+
+
+
+@code {
+    private Zival[]? seznamZivali;
+    private Zival novaZival;
+    // private Zival spremenjenaZival;
+    private int idZivali;
+    private int animalId { get; set; }
+    private string newAnimalClass { get; set; }
+
+    protected override async Task OnInitializedAsync() //Metoda, ki se kliče ob prvem izrisu strani!
+    {
+        novaZival = new Zival() { id = 0, name = "", razred = "", starost = 0 };
+        seznamZivali = await Http.GetFromJsonAsync<Zival[]>("/zival");
+    }
+    private async void save(Zival zival)
+    {
+        if(seznamZivali.Any(x=>x.id==zival.id)){
+            await JSRuntime.InvokeVoidAsync("alert", "ID already exists. Please choose a different one.");
+
+        }else{
+            var reply = await Http.PostAsJsonAsync<Zival>("/DodajZivali", zival);
+            seznamZivali = await Http.GetFromJsonAsync<Zival[]>("/zival");
+            InvokeAsync(() => { StateHasChanged(); }); //Proži ponoven izriz sicer se ne zgodi nič!
+        }
+
+    }
+
+
+
+
+    private async void delete(int id)
+    {
+        try
+        {
+            Console.WriteLine(id);
+            var response = await Http.DeleteAsync($"/DeleteZival/{id}");
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("eror");
+        }
+        seznamZivali = await Http.GetFromJsonAsync<Zival[]>("/zival");
+        InvokeAsync(() => { StateHasChanged(); });
+
+    }
+
+
+    private async void change(int id,string razred)
+    {
+        Zival iskanaZival = seznamZivali.FirstOrDefault(x => x.id == id);
+
+        if (iskanaZival != null)
+        {
+            iskanaZival.razred = razred;         
+            var response = await Http.PutAsJsonAsync($"/ChangeAnimal/{id}", iskanaZival);         
+            seznamZivali = await Http.GetFromJsonAsync<Zival[]>("/zival");
+            StateHasChanged();
+        }else{
+            Console.WriteLine("napaka");
+        }
+    }
+
+
+}

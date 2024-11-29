@@ -1,0 +1,132 @@
+﻿@page "/Skrbniki"
+@using BlazorApp3.NewFolder
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+
+
+<h1>Skrbniki:</h1>
+
+@if (seznamSkrbnikov == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name:</th>
+                <th>Specification:</th>
+                <th>Working time:</th>
+
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var skrbnik in seznamSkrbnikov)
+            {
+                <tr>
+
+                    <td>@skrbnik.ime</td>
+                    <td>@skrbnik.specikacija</td>
+                    <td>@skrbnik.delovnaDoba</td>
+                </tr>
+            }
+            <tr>
+                <td><input @bind="@noviSkrbnik.ime" @oninput="(e)=> { noviSkrbnik.ime = e.Value ==null? string.Empty:(string)e.Value; }" /></td>
+                <td>
+                    <input @bind="@noviSkrbnik.specikacija" @oninput="(e)=> { noviSkrbnik.specikacija = e.Value ==null? string.Empty:(string)e.Value; }" />
+                </td>
+                <td>
+                    <input @bind="@noviSkrbnik.delovnaDoba" />
+                </td>
+
+                <td><button @onclick="()=>save(noviSkrbnik)">Save</button></td>
+            </tr>
+            <tr>
+                <td>
+                    <input @bind="@imeSkrbnik" @oninput="(e)=> { imeSkrbnik = e.Value ==null? string.Empty:(string)e.Value; }" />
+                </td>
+                <td><button @onclick="()=>delete(imeSkrbnik)">Delete</button></td>
+
+            </tr>
+
+
+            <tr>
+                <td>
+                    <input @bind="@imeSkrbnikToChange" placeholder="Name you want to change" @oninput="(e)=> { imeSkrbnikToChange = e.Value ==null? string.Empty:(string)e.Value; }" />
+
+                </td>
+                <td>
+                    <input @bind="@noviPoklic" placeholder="New profession" @oninput="(e)=> { noviPoklic = e.Value ==null? string.Empty:(string)e.Value; }" />
+                </td>
+                <td> <button @onclick="()=>change(imeSkrbnikToChange,noviPoklic)">Change</button></td>
+            </tr>
+        </tbody>
+    </table>
+}
+
+
+
+@code {
+    private Skrbnik[]? seznamSkrbnikov;
+    private Skrbnik noviSkrbnik;
+    private string imeSkrbnik = "";
+    private string imeSkrbnikToChange = "";
+    private string noviPoklic = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        noviSkrbnik = new Skrbnik() { ime = "", specikacija = "", delovnaDoba = 0 };
+        seznamSkrbnikov = await Http.GetFromJsonAsync<Skrbnik[]>("/skrbnik");
+    }
+    private async void save(Skrbnik skrbnik)
+    {
+
+        if (seznamSkrbnikov.Any(x => x.ime == skrbnik.ime))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Name already exists. Please choose a different one.");
+
+        }else{
+            var reply = await Http.PostAsJsonAsync<Skrbnik>("/DodajSkrbnika", skrbnik);
+            seznamSkrbnikov = await Http.GetFromJsonAsync<Skrbnik[]>("/skrbnik");
+            InvokeAsync(() => { StateHasChanged(); });
+        }
+      
+    }
+
+    private async void delete(string ime)
+    {
+        try
+        {
+            Console.WriteLine(ime);
+            var response = await Http.DeleteAsync($"/DeleteSkrbnik/{ime}");
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("eror");
+        }
+        seznamSkrbnikov = await Http.GetFromJsonAsync<Skrbnik[]>("/skrbnik");
+        InvokeAsync(() => { StateHasChanged(); });
+
+    }
+
+
+   
+    private async void change(string ime,string delo)
+    {
+        Skrbnik iskaniSKrbnik = seznamSkrbnikov.FirstOrDefault(x => x.ime == ime);
+
+        if (iskaniSKrbnik != null)
+        {
+            iskaniSKrbnik.specikacija = delo;
+            var response = await Http.PutAsJsonAsync($"/ChangeKeeper/{ime}", iskaniSKrbnik);
+            seznamSkrbnikov = await Http.GetFromJsonAsync<Skrbnik[]>("/skrbnik");
+            StateHasChanged();
+        }else{
+            Console.WriteLine("napaka");
+        }
+    }
+
+}

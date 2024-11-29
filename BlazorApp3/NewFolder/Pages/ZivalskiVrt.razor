@@ -1,0 +1,155 @@
+﻿@page "/ZivalskiVrt"
+@using BlazorApp3.NewFolder
+@inject HttpClient Http
+
+
+<PageTitle>Zivalski vrt</PageTitle>
+
+<h1>Zivalski vrt:</h1>
+
+
+
+
+
+@if (seznamVrtov == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Animal id:</th>
+                <th>Animal name:</th>
+                <th>Guardian name:</th>
+                <th>Year of arrival:</th>
+                <th>Year of leaving:</th>
+
+
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var vrt in seznamVrtov) //Foreach (tako bomo zgradili tabelo)!
+            {
+                <tr>
+
+                    <td>@vrt.zival.id</td>
+                    <td>@vrt.zival.name</td>
+                    <td>@vrt.skrbnikZivali.ime</td>
+                    <td>@vrt.letoPrihoda</td>
+                    <td>@vrt.letoOdhoda</td>
+
+
+                </tr>
+            }
+            <tr>
+                <td><input @bind="@noviVrt.zival.id" /></td>
+                <td>
+                    <input @bind="@noviVrt.zival.name" @oninput="(e)=> { noviVrt.zival.name = e.Value ==null? string.Empty:(string)e.Value; }" />
+                </td>
+                <td>
+                    <input @bind="@noviVrt.skrbnikZivali.ime" @oninput="(e)=> {noviVrt.skrbnikZivali.ime = e.Value ==null? string.Empty:(string)e.Value; }" />
+                </td>
+                <td>
+                    <input @bind="@noviVrt.letoPrihoda" />
+                </td>
+                <td>
+                    <input @bind="@noviVrt.letoOdhoda" />
+                </td>
+                <td><button @onclick="()=>save(noviVrt)">Save</button></td>
+
+            </tr>
+
+
+                 <tr>
+                <td>
+                    <input @bind="@idZivali" />
+                </td>
+
+
+                <td><button @onclick="()=>delete(idZivali)">Delete</button></td>
+            </tr>
+
+            <tr>
+                <td>
+                    <input @bind="@animalId" placeholder="ID you want to change" />
+
+                </td>
+                <td>
+                    <input @bind="@newYearOfLeaving" placeholder="New year of arrival" />
+                </td>
+                <td> <button @onclick="()=>change(animalId,newYearOfLeaving)">Change</button></td>
+            </tr>
+        </tbody>
+    </table>
+}
+
+
+
+@code {
+    private Zival_v_vrtu[]? seznamVrtov;
+    private Zival_v_vrtu noviVrt;
+    private int idZivali;
+    private int animalId;
+    private int newYearOfLeaving;
+
+    protected override async Task OnInitializedAsync() //Metoda, ki se kliče ob prvem izrisu strani!
+    {
+        noviVrt = new Zival_v_vrtu() { zival = new Zival(), skrbnikZivali = new Skrbnik(), letoPrihoda = 0, letoOdhoda = 0, stSkrbnikov = 0 };
+        seznamVrtov = await Http.GetFromJsonAsync<Zival_v_vrtu[]>("/VsiVrtovi");
+    }
+    
+    
+    private async void save(Zival_v_vrtu zivalskivrt)
+        {
+        var reply = await Http.PostAsJsonAsync<Zival_v_vrtu>("/ZooPost", noviVrt);
+        seznamVrtov = await Http.GetFromJsonAsync<Zival_v_vrtu[]>("/VsiVrtovi");
+        InvokeAsync(() => { StateHasChanged(); }); //Proži ponoven izriz sicer se ne zgodi nič!
+        }
+
+                
+    
+    private async void delete(int id)
+    {
+        try
+        {
+            Console.WriteLine(id);
+            var response = await Http.DeleteAsync($"/DeleteZivalskiVrt/{id}");
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("eror");
+        }
+        seznamVrtov = await Http.GetFromJsonAsync<Zival_v_vrtu[]>("/VsiVrtovi");
+        InvokeAsync(() => { StateHasChanged(); });
+
+    }
+
+
+
+    private async void change(int id, int letoOdh)
+    {
+        Zival_v_vrtu iskaniVrt = seznamVrtov.FirstOrDefault(x => x.zival.id == id);
+
+        if (iskaniVrt != null)
+        {
+            iskaniVrt.letoOdhoda = letoOdh;
+            var response = await Http.PutAsJsonAsync($"/ChangeZoo/{id}", iskaniVrt);
+            seznamVrtov = await Http.GetFromJsonAsync<Zival_v_vrtu[]>("/VsiVrtovi");
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine("napaka");
+        }
+    }
+
+
+
+}
+
+
+
+
